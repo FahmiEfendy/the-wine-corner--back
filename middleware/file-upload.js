@@ -5,14 +5,13 @@ const MIME_TYPE_MAP = {
   "image/png": "png",
   "image/jpg": "jpg",
   "image/jpeg": "jpeg",
-  "image/jpeg": "jfif",
 };
 
 const fileUpload = multer({
   limits: 500000,
   storage: multer.diskStorage({
-    destination: (req, res, cb) => {
-      cb(null, "uploads/image");
+    destination: (req, file, cb) => {
+      cb(null, "uploads/images");
     },
     filename: (req, file, cb) => {
       const ext = MIME_TYPE_MAP[file.mimetype];

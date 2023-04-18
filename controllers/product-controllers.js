@@ -1,3 +1,4 @@
+const fs = require("fs");
 const mongoose = require("mongoose");
 
 const HttpError = require("../models/http-error");
@@ -218,10 +219,15 @@ const deleteProduct = async (req, res, next) => {
       )
     );
 
+  const imagePath = selectedProduct.productImage;
+
   try {
-    await selectedProduct.deleteOne();
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await selectedProduct.deleteOne({ session: sess });
     selectedProduct.productCategory.products.pull(selectedProduct);
-    await selectedProduct.productCategory.save();
+    await selectedProduct.productCategory.save({ session: sess });
+    await sess.commitTransaction();
   } catch (err) {
     return next(
       new HttpError(
@@ -230,6 +236,8 @@ const deleteProduct = async (req, res, next) => {
       )
     );
   }
+
+  fs.unlink(imagePath, (err) => err && console.log(err));
 
   res.status(200).json({
     message: "Successfully deleted a product!",
