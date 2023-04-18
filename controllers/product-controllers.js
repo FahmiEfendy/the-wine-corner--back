@@ -84,8 +84,50 @@ const getAllProducts = async (req, res, next) => {
     .json({ message: "Successfully get all products!", data: allProducts });
 };
 
+const getProductByProductId = async (req, res, next) => {
+  const { productId } = req.params;
+
+  let selectedProduct;
+
+  try {
+    selectedProduct = await Product.findById(productId);
+  } catch (err) {
+    throw new Error(
+      `Cannot find product with id of ${productId} because of ${err.message}`
+    );
+  }
+
+  res.status(200).json({
+    message: `Successfully get a product with id of ${productId}`,
+    data: selectedProduct,
+  });
+};
+
+const getAllProductsByProductCategory = async (req, res, next) => {
+  const { categoryId } = req.params;
+
+  let allProductsByCategory;
+
+  try {
+    allProductsByCategory = await Category.findById(categoryId).populate(
+      "products"
+    );
+  } catch (err) {
+    throw new Error(
+      `Cannot find all products for specific category because of ${err.message}`
+    );
+  }
+
+  res.status(200).json({
+    message: "Successfully get all products for specific category!",
+    data: allProductsByCategory,
+  });
+};
+
 exports.createProduct = createProduct;
 exports.createCategory = createCategory;
 
 exports.getAllProducts = getAllProducts;
 exports.getAllCategories = getAllCategories;
+exports.getProductByProductId = getProductByProductId;
+exports.getAllProductsByProductCategory = getAllProductsByProductCategory;

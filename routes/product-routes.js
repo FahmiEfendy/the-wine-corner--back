@@ -16,4 +16,13 @@ router.get("/products", productControllers.getAllProducts);
 // /api/product/category
 router.get("/category", productControllers.getAllCategories);
 
+// /api/product/products/:productId
+router.get("/products/:productId", productControllers.getProductByProductId);
+
+// /api/product/category/:categoryId
+router.get(
+  "/category/:categoryId",
+  productControllers.getAllProductsByProductCategory
+);
+
 module.exports = router;
