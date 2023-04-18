@@ -74,7 +74,7 @@ const getAllProducts = async (req, res, next) => {
   let allProducts;
 
   try {
-    allProducts = await Product.find();
+    allProducts = await Category.find().populate("products");
   } catch (err) {
     throw new Error(`Cannot get all categories because of ${err.message}`);
   }
@@ -124,6 +124,37 @@ const getAllProductsByProductCategory = async (req, res, next) => {
   });
 };
 
+const updateProduct = async (req, res, next) => {
+  const { productId } = req.params;
+  const { productName, productPrice } = req.body;
+
+  let selectedProduct;
+
+  try {
+    selectedProduct = await Product.findById(productId);
+  } catch (err) {
+    throw new Error(
+      `Cannot find product with id of ${productId} because of ${err.message}`
+    );
+  }
+
+  selectedProduct.productName = productName;
+  selectedProduct.productPrice = productPrice;
+
+  try {
+    await selectedProduct.save();
+  } catch (err) {
+    throw new Error(
+      `Failed to update a product with id of ${productId}, because ${err.message}`
+    );
+  }
+
+  res.status(200).json({
+    message: "Successfully update a product!",
+    data: selectedProduct.toObject({ getters: true }),
+  });
+};
+
 exports.createProduct = createProduct;
 exports.createCategory = createCategory;
 
@@ -131,3 +162,5 @@ exports.getAllProducts = getAllProducts;
 exports.getAllCategories = getAllCategories;
 exports.getProductByProductId = getProductByProductId;
 exports.getAllProductsByProductCategory = getAllProductsByProductCategory;
+
+exports.updateProduct = updateProduct;

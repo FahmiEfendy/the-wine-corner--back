@@ -25,4 +25,7 @@ router.get(
   productControllers.getAllProductsByProductCategory
 );
 
+// api/product/products/:productId
+router.patch("/products/:productId", productControllers.updateProduct);
+
 module.exports = router;
