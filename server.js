@@ -2,6 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser"); // Parse any incoming body to extract JSON data
 
+const HttpError = require("./models/http-error");
+
 const app = express();
 
 app.use(bodyParser.json());
@@ -22,6 +24,16 @@ app.use((req, res, next) => {
 const productRoutes = require("./routes/product-routes");
 
 app.use("/api", productRoutes);
+
+app.use((req, res, next) => {
+  const error = new HttpError("Could not find any matches routes!", 404);
+  throw error;
+});
+
+app.use((error, req, res, next) => {
+  res.status(error.code || 500);
+  res.json({ message: error.message || "An unknown error occured!" });
+});
 
 mongoose
   .connect(

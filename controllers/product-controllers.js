@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const HttpError = require("../models/http-error");
+
 const Product = require("../models/product-models");
 const Category = require("../models/category-models");
 
@@ -15,7 +17,12 @@ const createCategory = async (req, res, next) => {
   try {
     await newCategory.save();
   } catch (err) {
-    throw new Error(`Failed to add new category because of ${err.message}`);
+    return next(
+      new HttpError(
+        `Failed to create new category because of ${err.message}`,
+        500
+      )
+    );
   }
 
   res.status(201).json({
@@ -32,7 +39,12 @@ const createProduct = async (req, res, next) => {
   try {
     category = await Category.findById(productCategory);
   } catch (err) {
-    throw new Error(`Failed to find a category because of ${err.message}`);
+    return next(
+      new HttpError(
+        `Failed to create new category because of ${err.message}`,
+        500
+      )
+    );
   }
 
   const newProduct = new Product({
@@ -47,7 +59,12 @@ const createProduct = async (req, res, next) => {
     category.products.push(newProduct);
     await category.save();
   } catch (err) {
-    throw new Error(`Failed to add a product because of ${err.message}`);
+    return next(
+      new HttpError(
+        `Failed to create new product because of ${err.message}`,
+        500
+      )
+    );
   }
 
   res.status(201).json({
@@ -64,7 +81,9 @@ const getAllProducts = async (req, res, next) => {
   try {
     allProducts = await Category.find().populate("products");
   } catch (err) {
-    throw new Error(`Cannot get all categories because of ${err.message}`);
+    return next(
+      new HttpError(`Cannot get all categories because of ${err.message}`, 500)
+    );
   }
 
   if (productType) {
@@ -86,14 +105,22 @@ const getProductByProductId = async (req, res, next) => {
   try {
     selectedProduct = await Product.findById(productId);
   } catch (err) {
-    throw new Error(
-      `Cannot find product with id of ${productId} because of ${err.message}`
+    return next(
+      new HttpError(
+        `Cannot find product with id of ${productId} because of ${err.message}`,
+        500
+      )
     );
   }
 
+  if (!selectedProduct)
+    return next(
+      new HttpError(`There is no product with id of ${productId}`, 404)
+    );
+
   res.status(200).json({
     message: `Successfully get a product with id of ${productId}`,
-    data: selectedProduct,
+    data: selectedProduct.toObject({ getters: true }),
   });
 };
 
@@ -111,14 +138,22 @@ const updateProduct = async (req, res, next) => {
     );
   }
 
+  if (!selectedProduct)
+    return next(
+      new HttpError(`There is no product with id of ${productId}`, 404)
+    );
+
   selectedProduct.productName = productName;
   selectedProduct.productPrice = productPrice;
 
   try {
     await selectedProduct.save();
   } catch (err) {
-    throw new Error(
-      `Failed to update a product with id of ${productId}, because ${err.message}`
+    return next(
+      new HttpError(
+        `Faled to update a product with id of ${productId} because of ${err.message}`,
+        500
+      )
     );
   }
 
@@ -138,13 +173,18 @@ const deleteProduct = async (req, res, next) => {
       "productCategory"
     );
   } catch (err) {
-    throw new Error(
-      `Cannot find a product with id of ${productId} because of ${err.message}`
+    return next(
+      new HttpError(
+        `Cannot find a product with id of ${productId} because of ${err.message}`,
+        500
+      )
     );
   }
 
   if (!selectedProduct)
-    throw new Error(`Cannot find a product with id of ${productId}`);
+    return next(
+      new HttpError(`Cannot find a product with id of ${productId}`, 404)
+    );
 
   // Find category
   let selectedCategory;
@@ -153,12 +193,17 @@ const deleteProduct = async (req, res, next) => {
       selectedProduct.productCategory.id
     );
   } catch (err) {
-    throw new Error(`Cannot find a category because of ${err.message}`);
+    return next(
+      new HttpError(`Cannot find a category because of ${err.message}`, 500)
+    );
   }
 
   if (!selectedCategory)
-    throw new Error(
-      `There is no category with id of ${selectedProduct.productCategory.id}`
+    return next(
+      new HttpError(
+        `There is no category with id of ${selectedProduct.productCategory.id}`,
+        404
+      )
     );
 
   try {
@@ -166,12 +211,15 @@ const deleteProduct = async (req, res, next) => {
     selectedProduct.productCategory.products.pull(selectedProduct);
     await selectedProduct.productCategory.save();
   } catch (err) {
-    throw new Error(
-      `Failed to delete a product with id of ${productId} because of ${err.message}`
+    return next(
+      new HttpError(
+        `Failed to delete a product with id of ${productId} because of ${err.message}`,
+        500
+      )
     );
   }
 
-  res.status(202).json({
+  res.status(200).json({
     message: "Successfully deleted a product!",
   });
 };
