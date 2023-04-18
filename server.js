@@ -6,6 +6,7 @@ const bodyParser = require("body-parser"); // Parse any incoming body to extract
 
 const HttpError = require("./models/http-error");
 
+const authRoutes = require("./routes/auth-routes");
 const productRoutes = require("./routes/product-routes");
 
 const app = express();
@@ -27,6 +28,7 @@ app.use((req, res, next) => {
 
 app.use("/uploads/images", express.static(path.join("uploads", "images")));
 
+app.use("/api/auth", authRoutes);
 app.use("/api", productRoutes);
 
 app.use((req, res, next) => {

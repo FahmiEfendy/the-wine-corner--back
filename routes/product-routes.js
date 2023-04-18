@@ -2,9 +2,18 @@ const express = require("express");
 
 const router = express.Router();
 
+const checkAuth = require("../middleware/check-auth");
 const fileUpload = require("../middleware/file-upload");
 
 const productControllers = require("../controllers/product-controllers");
+
+// // /api/products
+router.get("/product", productControllers.getAllProducts);
+
+// // /api/category/:categoryId
+router.get("/:productId", productControllers.getProductByProductId);
+
+router.use(checkAuth);
 
 // // /api/category
 router.post("/category", productControllers.createCategory);
@@ -15,18 +24,6 @@ router.post(
   fileUpload.single("productImage"),
   productControllers.createProduct
 );
-
-// // /api/login
-// // POST Login
-
-// // /api/register
-// // POST Register
-
-// // /api/products
-router.get("/product", productControllers.getAllProducts);
-
-// // /api/category/:categoryId
-router.get("/:productId", productControllers.getProductByProductId);
 
 // // api/products/:productId
 router.patch("/:productId", productControllers.updateProduct);
