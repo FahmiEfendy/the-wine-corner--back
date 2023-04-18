@@ -21,7 +21,7 @@ app.use((req, res, next) => {
 
 const productRoutes = require("./routes/product-routes");
 
-app.use("/api/product", productRoutes);
+app.use("/api", productRoutes);
 
 mongoose
   .connect(

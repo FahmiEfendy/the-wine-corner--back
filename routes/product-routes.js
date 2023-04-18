@@ -4,31 +4,28 @@ const router = express.Router();
 
 const productControllers = require("../controllers/product-controllers");
 
-// /api/product/products
-router.post("/products", productControllers.createProduct);
-
-// /api/product/category
+// // /api/category
 router.post("/category", productControllers.createCategory);
 
-// /api/product/products
-router.get("/products", productControllers.getAllProducts);
+// /api/product
+router.post("/product", productControllers.createProduct);
 
-// /api/product/category
-router.get("/category", productControllers.getAllCategories);
+// // /api/login
+// // POST Login
 
-// /api/product/products/:productId
-router.get("/products/:productId", productControllers.getProductByProductId);
+// // /api/register
+// // POST Register
 
-// /api/product/category/:categoryId
-router.get(
-  "/category/:categoryId",
-  productControllers.getAllProductsByProductCategory
-);
+// // /api/products
+router.get("/product", productControllers.getAllProducts);
 
-// api/product/products/:productId
-router.patch("/products/:productId", productControllers.updateProduct);
+// // /api/category/:categoryId
+router.get("/:productId", productControllers.getProductByProductId);
 
-// api/product/products/:productId
-router.delete("/products/:productId", productControllers.deleteProduct);
+// // api/products/:productId
+router.patch("/:productId", productControllers.updateProduct);
+
+// // api/products/:productId
+router.delete("/:productId", productControllers.deleteProduct);
 
 module.exports = router;

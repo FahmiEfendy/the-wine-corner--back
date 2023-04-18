@@ -18,19 +18,19 @@ const createCategory = async (req, res, next) => {
     throw new Error(`Failed to add new category because of ${err.message}`);
   }
 
-  res
-    .status(201)
-    .json({ message: "Successfully add new category!", data: newCategory });
+  res.status(201).json({
+    message: "Successfully add new category!",
+    data: newCategory.toObject({ getters: true }),
+  });
 };
 
 const createProduct = async (req, res, next) => {
-  const { productName, productPrice, productImage, productCategoryId } =
-    req.body;
+  const { productName, productPrice, productImage, productCategory } = req.body;
 
   let category;
   // Find category
   try {
-    category = await Category.findById(productCategoryId);
+    category = await Category.findById(productCategory);
   } catch (err) {
     throw new Error(`Failed to find a category because of ${err.message}`);
   }
@@ -39,7 +39,7 @@ const createProduct = async (req, res, next) => {
     productName,
     productPrice,
     productImage,
-    productCategoryId,
+    productCategory,
   });
 
   try {
@@ -54,20 +54,6 @@ const createProduct = async (req, res, next) => {
     message: "Successfully add new product!,",
     data: newProduct.toObject({ getters: true }),
   });
-};
-
-const getAllCategories = async (req, res, next) => {
-  let allCategories;
-
-  try {
-    allCategories = await Category.find();
-  } catch (err) {
-    throw new Error(`Cannot get all category because of ${err.message}`);
-  }
-
-  res
-    .status(200)
-    .json({ message: "Successfully get all categories!", data: allCategories });
 };
 
 const getAllProducts = async (req, res, next) => {
@@ -100,27 +86,6 @@ const getProductByProductId = async (req, res, next) => {
   res.status(200).json({
     message: `Successfully get a product with id of ${productId}`,
     data: selectedProduct,
-  });
-};
-
-const getAllProductsByProductCategory = async (req, res, next) => {
-  const { categoryId } = req.params;
-
-  let allProductsByCategory;
-
-  try {
-    allProductsByCategory = await Category.findById(categoryId).populate(
-      "products"
-    );
-  } catch (err) {
-    throw new Error(
-      `Cannot find all products for specific category because of ${err.message}`
-    );
-  }
-
-  res.status(200).json({
-    message: "Successfully get all products for specific category!",
-    data: allProductsByCategory,
   });
 };
 
@@ -162,7 +127,7 @@ const deleteProduct = async (req, res, next) => {
   let selectedProduct;
   try {
     selectedProduct = await Product.findById(productId).populate(
-      "productCategoryId"
+      "productCategory"
     );
   } catch (err) {
     throw new Error(
@@ -177,7 +142,7 @@ const deleteProduct = async (req, res, next) => {
   let selectedCategory;
   try {
     selectedCategory = await Category.findById(
-      selectedProduct.productCategoryId.id
+      selectedProduct.productCategory.id
     );
   } catch (err) {
     throw new Error(`Cannot find a category because of ${err.message}`);
@@ -185,13 +150,13 @@ const deleteProduct = async (req, res, next) => {
 
   if (!selectedCategory)
     throw new Error(
-      `There is no category with id of ${selectedProduct.productCategoryId.id}`
+      `There is no category with id of ${selectedProduct.productCategory.id}`
     );
 
   try {
     await selectedProduct.deleteOne();
-    selectedProduct.productCategoryId.products.pull(selectedProduct);
-    await selectedProduct.productCategoryId.save();
+    selectedProduct.productCategory.products.pull(selectedProduct);
+    await selectedProduct.productCategory.save();
   } catch (err) {
     throw new Error(
       `Failed to delete a product with id of ${productId} because of ${err.message}`
@@ -207,9 +172,7 @@ exports.createProduct = createProduct;
 exports.createCategory = createCategory;
 
 exports.getAllProducts = getAllProducts;
-exports.getAllCategories = getAllCategories;
 exports.getProductByProductId = getProductByProductId;
-exports.getAllProductsByProductCategory = getAllProductsByProductCategory;
 
 exports.updateProduct = updateProduct;
 
