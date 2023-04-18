@@ -28,4 +28,7 @@ router.get(
 // api/product/products/:productId
 router.patch("/products/:productId", productControllers.updateProduct);
 
+// api/product/products/:productId
+router.delete("/products/:productId", productControllers.deleteProduct);
+
 module.exports = router;

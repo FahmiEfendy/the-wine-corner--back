@@ -52,7 +52,7 @@ const createProduct = async (req, res, next) => {
 
   res.status(201).json({
     message: "Successfully add new product!,",
-    data: newProduct,
+    data: newProduct.toObject({ getters: true }),
   });
 };
 
@@ -155,6 +155,54 @@ const updateProduct = async (req, res, next) => {
   });
 };
 
+const deleteProduct = async (req, res, next) => {
+  const { productId } = req.params;
+
+  // Find product
+  let selectedProduct;
+  try {
+    selectedProduct = await Product.findById(productId).populate(
+      "productCategoryId"
+    );
+  } catch (err) {
+    throw new Error(
+      `Cannot find a product with id of ${productId} because of ${err.message}`
+    );
+  }
+
+  if (!selectedProduct)
+    throw new Error(`Cannot find a product with id of ${productId}`);
+
+  // Find category
+  let selectedCategory;
+  try {
+    selectedCategory = await Category.findById(
+      selectedProduct.productCategoryId.id
+    );
+  } catch (err) {
+    throw new Error(`Cannot find a category because of ${err.message}`);
+  }
+
+  if (!selectedCategory)
+    throw new Error(
+      `There is no category with id of ${selectedProduct.productCategoryId.id}`
+    );
+
+  try {
+    await selectedProduct.deleteOne();
+    selectedProduct.productCategoryId.products.pull(selectedProduct);
+    await selectedProduct.productCategoryId.save();
+  } catch (err) {
+    throw new Error(
+      `Failed to delete a product with id of ${productId} because of ${err.message}`
+    );
+  }
+
+  res.status(202).json({
+    message: "Successfully deleted a product!",
+  });
+};
+
 exports.createProduct = createProduct;
 exports.createCategory = createCategory;
 
@@ -164,3 +212,5 @@ exports.getProductByProductId = getProductByProductId;
 exports.getAllProductsByProductCategory = getAllProductsByProductCategory;
 
 exports.updateProduct = updateProduct;
+
+exports.deleteProduct = deleteProduct;
