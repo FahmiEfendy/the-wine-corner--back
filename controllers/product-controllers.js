@@ -22,6 +22,7 @@ const createCategory = async (req, res, next) => {
     .status(201)
     .json({ message: "Successfully add new category!", data: newCategory });
 };
+
 const createProduct = async (req, res, next) => {
   const { productName, productPrice, productImage, productCategoryId } =
     req.body;
@@ -55,5 +56,36 @@ const createProduct = async (req, res, next) => {
   });
 };
 
-exports.createCategory = createCategory;
+const getAllCategories = async (req, res, next) => {
+  let allCategories;
+
+  try {
+    allCategories = await Category.find();
+  } catch (err) {
+    throw new Error(`Cannot get all category because of ${err.message}`);
+  }
+
+  res
+    .status(200)
+    .json({ message: "Successfully get all categories!", data: allCategories });
+};
+
+const getAllProducts = async (req, res, next) => {
+  let allProducts;
+
+  try {
+    allProducts = await Product.find();
+  } catch (err) {
+    throw new Error(`Cannot get all categories because of ${err.message}`);
+  }
+
+  res
+    .status(200)
+    .json({ message: "Successfully get all products!", data: allProducts });
+};
+
 exports.createProduct = createProduct;
+exports.createCategory = createCategory;
+
+exports.getAllProducts = getAllProducts;
+exports.getAllCategories = getAllCategories;
