@@ -57,12 +57,20 @@ const createProduct = async (req, res, next) => {
 };
 
 const getAllProducts = async (req, res, next) => {
+  const { productType } = req.query;
+
   let allProducts;
 
   try {
     allProducts = await Category.find().populate("products");
   } catch (err) {
     throw new Error(`Cannot get all categories because of ${err.message}`);
+  }
+
+  if (productType) {
+    allProducts = allProducts.filter(
+      (product) => product.productType === productType
+    );
   }
 
   res
