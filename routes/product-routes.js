@@ -2,13 +2,19 @@ const express = require("express");
 
 const router = express.Router();
 
+const fileUpload = require("../middleware/file-upload");
+
 const productControllers = require("../controllers/product-controllers");
 
 // // /api/category
 router.post("/category", productControllers.createCategory);
 
 // /api/product
-router.post("/product", productControllers.createProduct);
+router.post(
+  "/product",
+  fileUpload.single("productImage"),
+  productControllers.createProduct
+);
 
 // // /api/login
 // // POST Login

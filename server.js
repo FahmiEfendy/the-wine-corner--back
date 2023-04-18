@@ -1,8 +1,12 @@
+const fs = require("fs");
+const path = require("path");
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser"); // Parse any incoming body to extract JSON data
 
 const HttpError = require("./models/http-error");
+
+const productRoutes = require("./routes/product-routes");
 
 const app = express();
 
@@ -21,7 +25,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const productRoutes = require("./routes/product-routes");
+app.use("/uploads/images", express.static(path.join("uploads", "images")));
 
 app.use("/api", productRoutes);
 
@@ -31,6 +35,10 @@ app.use((req, res, next) => {
 });
 
 app.use((error, req, res, next) => {
+  if (req.file) fs.unlink(req.file.path, (err) => console.log(err));
+
+  if (res.headerSent) return next(error);
+
   res.status(error.code || 500);
   res.json({ message: error.message || "An unknown error occured!" });
 });

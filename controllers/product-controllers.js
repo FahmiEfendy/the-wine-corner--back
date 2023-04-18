@@ -32,7 +32,7 @@ const createCategory = async (req, res, next) => {
 };
 
 const createProduct = async (req, res, next) => {
-  const { productName, productPrice, productImage, productCategory } = req.body;
+  const { productName, productPrice, productCategory } = req.body;
 
   let category;
   // Find category
@@ -47,17 +47,29 @@ const createProduct = async (req, res, next) => {
     );
   }
 
+  if (!category) {
+    return next(
+      new HttpError(
+        `Failed to find a category with id of ${productCategory}`,
+        404
+      )
+    );
+  }
+
   const newProduct = new Product({
     productName,
     productPrice,
-    productImage,
+    productImage: req.file.path,
     productCategory,
   });
 
   try {
-    await newProduct.save();
+    const sess = await mongoose.startSession();
+    sess.startTransaction();
+    await newProduct.save({ session: sess });
     category.products.push(newProduct);
-    await category.save();
+    await category.save({ session: sess });
+    await sess.commitTransaction();
   } catch (err) {
     return next(
       new HttpError(
