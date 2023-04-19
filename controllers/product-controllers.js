@@ -6,6 +6,127 @@ const HttpError = require("../models/http-error");
 const Product = require("../models/product-models");
 const Category = require("../models/category-models");
 
+const getAllProducts = async (req, res, next) => {
+  const { productType } = req.query;
+
+  let allProducts;
+
+  try {
+    allProducts = await Category.find().populate("products");
+  } catch (err) {
+    return next(
+      new HttpError(`Cannot get all categories because of ${err.message}`, 500)
+    );
+  }
+  // console.log(allProducts);
+
+  if (productType) {
+    try {
+      allProducts = await Category.find({ productType: productType }).populate(
+        "products"
+      );
+    } catch (err) {
+      return next(
+        new HttpError(
+          `Cannot filter all product with product type of ${productType}`,
+          500
+        )
+      );
+    }
+  }
+
+  res.status(200).json({
+    message: "Successfully get all products!",
+    data: allProducts.map((product) => product.toObject({ getters: true })),
+  });
+};
+
+const getProductRecommendation = async (req, res, next) => {
+  const { productType, productId } = req.query;
+
+  let allProducts;
+
+  try {
+    allProducts = await Category.find().populate("products");
+  } catch (err) {
+    return next(
+      new HttpError(`Cannot get all categories because of ${err.message}`, 500)
+    );
+  }
+
+  if (!productType) {
+    return next(
+      new HttpError(
+        `Cannot get all products for categroy of ${productType}`,
+        500
+      )
+    );
+  }
+
+  try {
+    allProducts = await Category.find({ productType: productType }).populate(
+      "products"
+    );
+  } catch (err) {
+    return next(
+      new HttpError(
+        `Cannot filter all product with product type of ${productType}`,
+        500
+      )
+    );
+  }
+
+  if (!productId) {
+    return next(
+      new HttpError(`Cannot get a product with id of ${productId}`, 500)
+    );
+  }
+
+  try {
+    allProducts = allProducts[0].products
+      .filter((product) => product.id !== productId)
+      .slice(0, 4);
+  } catch (err) {
+    return next(
+      new HttpError(
+        `Cannot get product recommendation for ${productType} because of ${err.message}`
+      )
+    );
+  }
+
+  res.status(200).json({
+    message: "Successfully get all products!",
+    data: allProducts.map((product) => product.toObject({ getters: true })),
+  });
+};
+
+const getProductByProductId = async (req, res, next) => {
+  const { productId } = req.params;
+
+  let selectedProduct;
+
+  try {
+    selectedProduct = await Product.findById(productId);
+  } catch (err) {
+    return next(
+      new HttpError(
+        `Cannot find product with id of ${productId} because of ${err.message}`,
+        500
+      )
+    );
+  }
+
+  if (!selectedProduct)
+    return next(
+      new HttpError(`There is no product with id of ${productId}`, 404)
+    );
+
+  res.status(200).json({
+    message: `Successfully get a product with id of ${productId}`,
+    data: selectedProduct.toObject({ getters: true }),
+  });
+};
+
 const createCategory = async (req, res, next) => {
   const { productPath, productType } = req.body;
 
@@ -83,57 +204,6 @@ const createProduct = async (req, res, next) => {
   res.status(201).json({
     message: "Successfully add new product!,",
     data: newProduct.toObject({ getters: true }),
-  });
-};
-
-const getAllProducts = async (req, res, next) => {
-  const { productType } = req.query;
-
-  let allProducts;
-
-  try {
-    allProducts = await Category.find().populate("products");
-  } catch (err) {
-    return next(
-      new HttpError(`Cannot get all categories because of ${err.message}`, 500)
-    );
-  }
-
-  if (productType) {
-    allProducts = allProducts.filter(
-      (product) => product.productType === productType
-    );
-  }
-
-  res
-    .status(200)
-    .json({ message: "Successfully get all products!", data: allProducts });
-};
-
-const getProductByProductId = async (req, res, next) => {
-  const { productId } = req.params;
-
-  let selectedProduct;
-
-  try {
-    selectedProduct = await Product.findById(productId);
-  } catch (err) {
-    return next(
-      new HttpError(
-        `Cannot find product with id of ${productId} because of ${err.message}`,
-        500
-      )
-    );
-  }
-
-  if (!selectedProduct)
-    return next(
-      new HttpError(`There is no product with id of ${productId}`, 404)
-    );
-
-  res.status(200).json({
-    message: `Successfully get a product with id of ${productId}`,
-    data: selectedProduct.toObject({ getters: true }),
   });
 };
 
@@ -249,6 +319,7 @@ exports.createCategory = createCategory;
 
 exports.getAllProducts = getAllProducts;
 exports.getProductByProductId = getProductByProductId;
+exports.getProductRecommendation = getProductRecommendation;
 
 exports.updateProduct = updateProduct;
 
