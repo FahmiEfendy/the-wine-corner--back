@@ -7,7 +7,7 @@ const Product = require("../models/product-models");
 const Category = require("../models/category-models");
 
 const getAllProducts = async (req, res, next) => {
-  const { productType } = req.query;
+  const { productType, productSearch } = req.query;
 
   let allProducts;
 
@@ -32,6 +32,18 @@ const getAllProducts = async (req, res, next) => {
           500
         )
       );
+    }
+  }
+
+  if (productSearch) {
+    try {
+      const regex = new RegExp(productSearch, "i");
+      allProducts = await Category.find().populate({
+        path: "products",
+        match: { productName: regex },
+      });
+    } catch (err) {
+      console.log(err.message);
     }
   }
 
