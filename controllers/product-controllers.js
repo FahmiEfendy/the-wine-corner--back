@@ -221,7 +221,7 @@ const createProduct = async (req, res, next) => {
 
 const updateProduct = async (req, res, next) => {
   const { productId } = req.params;
-  const { productName, productPrice } = req.body;
+  const { productName, productPrice, productCategory } = req.body;
 
   let selectedProduct;
 
@@ -240,8 +240,19 @@ const updateProduct = async (req, res, next) => {
 
   selectedProduct.productName = productName;
   selectedProduct.productPrice = productPrice;
+  selectedProduct.productCategory = productCategory;
 
   try {
+    if (req.file) {
+      const newImage = req.file.path;
+
+      if (newImage !== selectedProduct.productImage) {
+        fs.unlink(selectedProduct.productImage, (err) => console.log(err));
+      }
+
+      selectedProduct.productImage = newImage;
+    }
+
     await selectedProduct.save();
   } catch (err) {
     return next(

@@ -32,7 +32,11 @@ router.post(
 );
 
 // api/products/:productId
-router.patch("/:productId", productControllers.updateProduct);
+router.patch(
+  "/:productId",
+  fileUpload.single("productImage"),
+  productControllers.updateProduct
+);
 
 // api/products/:productId
 router.delete("/:productId", productControllers.deleteProduct);
