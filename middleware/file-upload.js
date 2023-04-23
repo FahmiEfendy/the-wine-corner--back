@@ -5,6 +5,7 @@ const MIME_TYPE_MAP = {
   "image/png": "png",
   "image/jpg": "jpg",
   "image/jpeg": "jpeg",
+  "image/webp": "webp",
 };
 
 const fileUpload = multer({
