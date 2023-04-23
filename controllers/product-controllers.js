@@ -47,9 +47,14 @@ const getAllProducts = async (req, res, next) => {
     }
   }
 
+  const totalProducts = allProducts.reduce((acc, curr) => {
+    return acc + curr.products.length;
+  }, 0);
+
   res.status(200).json({
     message: "Successfully get all products!",
     data: allProducts.map((product) => product.toObject({ getters: true })),
+    length: totalProducts,
   });
 };
 
