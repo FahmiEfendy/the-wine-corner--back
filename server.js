@@ -4,6 +4,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser"); // Parse any incoming body to extract JSON data
 
+require("dotenv").config();
+
 const HttpError = require("./models/http-error");
 
 const authRoutes = require("./routes/auth-routes");
