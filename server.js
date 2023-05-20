@@ -47,12 +47,14 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || "An unknown error occured!" });
 });
 
+let port = process.env.PORT || 27017;
+
 mongoose
   .connect(
     `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster-place.arkm4vk.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
   )
   .then(() => {
-    console.log("Successfully connected to database!");
-    app.listen(process.env.PORT || 5000);
+    console.log("Successfully connected to database!", port);
+    app.listen(process.env.PORT || 27017);
   })
-  .catch((error) => console.log("Failed to connect to database!", error));
+  .catch((error) => console.error("Failed to connect to database!", error));
