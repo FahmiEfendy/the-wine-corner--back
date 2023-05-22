@@ -47,7 +47,7 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || "An unknown error occured!" });
 });
 
-let port = process.env.PORT || 27017;
+let port = 5000;
 
 mongoose
   .connect(
@@ -55,6 +55,6 @@ mongoose
   )
   .then(() => {
     console.log("Successfully connected to database!", port);
-    app.listen(process.env.PORT || 27017);
+    app.listen(port);
   })
   .catch((error) => console.error("Failed to connect to database!", error));
