@@ -1,10 +1,15 @@
 const fs = require("fs");
-const mongoose = require("mongoose");
+const uuid = require("uuid");
+const mysql = require("mysql2/promise");
+
+const mysqlPool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
 
 const HttpError = require("../models/http-error");
-
-const Product = require("../models/product-models");
-const Category = require("../models/category-models");
 
 const getAllProducts = async (req, res, next) => {
   const { productType, productSearch } = req.query;
@@ -12,23 +17,35 @@ const getAllProducts = async (req, res, next) => {
   let allProducts;
 
   try {
-    allProducts = await Category.find().populate("products");
+    allProducts = await mysqlPool.query(
+      `SELECT c.productCategoryId as __id, c.productPath, c.productType, JSON_ARRAYAGG( JSON_OBJECT('productID',p.productID,'productName', p.productName, 'productPrice', p.productPrice, 'productImage', p.productImage)) AS products 
+      FROM categories c 
+      LEFT JOIN products p ON c.productCategoryId = p.productCategoryId 
+      WHERE p.productCategoryId IS NOT NULL 
+      GROUP BY c.productCategoryId, c.productPath, c.productType;`
+    );
   } catch (err) {
     return next(
       new HttpError(`Cannot get all categories because of ${err.message}`, 500)
     );
   }
-  // console.log(allProducts);
 
   if (productType) {
     try {
-      allProducts = await Category.find({ productType: productType }).populate(
-        "products"
+      allProducts = await mysqlPool.query(
+        `SELECT c.productCategoryId AS __id, c.productPath, c.productType, JSON_ARRAYAGG(
+            JSON_OBJECT('productID', p.productID, 'productName', p.productName, 'productPrice', p.productPrice, 'productImage', p.productImage)
+            ) AS products
+        FROM categories c
+        JOIN products p ON c.productCategoryId = p.productCategoryId
+        WHERE c.productType = ?
+        GROUP BY c.productCategoryId, c.productPath, c.productType;`,
+        [productType]
       );
     } catch (err) {
       return next(
         new HttpError(
-          `Cannot filter all product with product type of ${productType}`,
+          `Cannot filter all product with product type of ${productType} because of ${err.message}`,
           500
         )
       );
@@ -37,15 +54,22 @@ const getAllProducts = async (req, res, next) => {
 
   if (productSearch) {
     try {
-      const regex = new RegExp(productSearch, "i");
-      allProducts = await Category.find().populate({
-        path: "products",
-        match: { productName: regex },
-      });
+      allProducts = await mysqlPool.query(
+        `SELECT c.id AS __id, c.productPath, c.productType, p.productID, p.productName, p.productPrice, p.productImage FROM categories c LEFT JOIN products p ON c.id = p.productCategory WHERE p.productCategory IS NOT NULL AND p.productName LIKE ?`,
+        [`%${productSearch}%`]
+      );
     } catch (err) {
       console.log(err.message);
     }
   }
+
+  allProducts = allProducts[0].map((category) => {
+    const products = JSON.parse(category.products);
+    return {
+      ...category,
+      products: products.map((product) => JSON.parse(product)),
+    };
+  });
 
   const totalProducts = allProducts.reduce((acc, curr) => {
     return acc + curr.products.length;
@@ -53,7 +77,7 @@ const getAllProducts = async (req, res, next) => {
 
   res.status(200).json({
     message: "Successfully get all products!",
-    data: allProducts.map((product) => product.toObject({ getters: true })),
+    data: allProducts,
     length: totalProducts,
   });
 };
@@ -62,27 +86,21 @@ const getProductRecommendation = async (req, res, next) => {
   const { productType, productId } = req.query;
 
   let allProducts;
-
-  try {
-    allProducts = await Category.find().populate("products");
-  } catch (err) {
-    return next(
-      new HttpError(`Cannot get all categories because of ${err.message}`, 500)
-    );
-  }
+  let recommendationProducts;
 
   if (!productType) {
     return next(
       new HttpError(
-        `Cannot get all products for categroy of ${productType}`,
+        `Cannot get all products for category of ${productType}`,
         500
       )
     );
   }
 
   try {
-    allProducts = await Category.find({ productType: productType }).populate(
-      "products"
+    allProducts = await mysqlPool.query(
+      `SELECT * FROM categories WHERE productType = ?`,
+      [productType]
     );
   } catch (err) {
     return next(
@@ -93,6 +111,10 @@ const getProductRecommendation = async (req, res, next) => {
     );
   }
 
+  const productCategoryId = allProducts[0].map((product) => {
+    return { ...product };
+  })[0].productCategoryId;
+
   if (!productId) {
     return next(
       new HttpError(`Cannot get a product with id of ${productId}`, 500)
@@ -100,9 +122,10 @@ const getProductRecommendation = async (req, res, next) => {
   }
 
   try {
-    allProducts = allProducts[0].products
-      .filter((product) => product.id !== productId)
-      .slice(0, 4);
+    recommendationProducts = await mysqlPool.query(
+      `SELECT * FROM products WHERE productCategoryId = ? AND productId != ? LIMIT 4`,
+      [productCategoryId, productId]
+    );
   } catch (err) {
     return next(
       new HttpError(
@@ -112,8 +135,8 @@ const getProductRecommendation = async (req, res, next) => {
   }
 
   res.status(200).json({
-    message: "Successfully get all products!",
-    data: allProducts.map((product) => product.toObject({ getters: true })),
+    message: "Successfully get all products!!",
+    data: recommendationProducts[0],
   });
 };
 
@@ -123,7 +146,10 @@ const getProductByProductId = async (req, res, next) => {
   let selectedProduct;
 
   try {
-    selectedProduct = await Product.findById(productId);
+    selectedProduct = await mysqlPool.query(
+      "SELECT p.productName,p.productPrice,p.productImage, c.productType FROM products p INNER JOIN categories c ON p.productCategoryId = c.productCategoryId WHERE p.productId = ?;",
+      [productId]
+    );
   } catch (err) {
     return next(
       new HttpError(
@@ -133,28 +159,27 @@ const getProductByProductId = async (req, res, next) => {
     );
   }
 
-  if (!selectedProduct)
+  if (selectedProduct.length === 0)
     return next(
       new HttpError(`There is no product with id of ${productId}`, 404)
     );
 
   res.status(200).json({
     message: `Successfully get a product with id of ${productId}`,
-    data: selectedProduct.toObject({ getters: true }),
+    data: selectedProduct[0],
   });
 };
 
 const createCategory = async (req, res, next) => {
   const { productPath, productType } = req.body;
 
-  const newCategory = new Category({
-    productPath,
-    productType,
-    products: [],
-  });
+  let id = uuid.v4();
 
   try {
-    await newCategory.save();
+    await mysqlPool.query(
+      "INSERT INTO categories (productCategoryId ,productPath, productType) VALUES (? ,?, ?)",
+      [id, productPath, productType]
+    );
   } catch (err) {
     return next(
       new HttpError(
@@ -166,17 +191,23 @@ const createCategory = async (req, res, next) => {
 
   res.status(201).json({
     message: "Successfully add new category!",
-    data: newCategory.toObject({ getters: true }),
+    data: { productCategoryId: id, productPath, productType },
   });
 };
 
 const createProduct = async (req, res, next) => {
-  const { productName, productPrice, productCategory } = req.body;
+  const { productName, productPrice, productCategoryId } = req.body;
+
+  let id = uuid.v4();
 
   let category;
   // Find category
   try {
-    category = await Category.findById(productCategory);
+    const [result] = await mysqlPool.query(
+      "SELECT * FROM categories WHERE productCategoryId = ?",
+      [productCategoryId]
+    );
+    category = result;
   } catch (err) {
     return next(
       new HttpError(
@@ -189,26 +220,26 @@ const createProduct = async (req, res, next) => {
   if (!category) {
     return next(
       new HttpError(
-        `Failed to find a category with id of ${productCategory}`,
+        `Failed to find a category with id of ${productCategoryId}`,
         404
       )
     );
   }
 
-  const newProduct = new Product({
+  const newProduct = {
+    productId: id,
     productName,
     productPrice,
     productImage: req.file.path,
-    productCategory,
-  });
+    productCategoryId,
+  };
 
+  let createdProduct;
   try {
-    const sess = await mongoose.startSession();
-    sess.startTransaction();
-    await newProduct.save({ session: sess });
-    category.products.push(newProduct);
-    await category.save({ session: sess });
-    await sess.commitTransaction();
+    const [result] = await mysqlPool.query("INSERT INTO products SET ?", [
+      newProduct,
+    ]);
+    createdProduct = { ...newProduct, productId: id };
   } catch (err) {
     return next(
       new HttpError(
@@ -220,18 +251,22 @@ const createProduct = async (req, res, next) => {
 
   res.status(201).json({
     message: "Successfully add new product!,",
-    data: newProduct.toObject({ getters: true }),
+    data: createdProduct,
   });
 };
 
 const updateProduct = async (req, res, next) => {
   const { productId } = req.params;
-  const { productName, productPrice, productCategory } = req.body;
+  const { productName, productPrice, productCategoryId } = req.body;
 
   let selectedProduct;
 
   try {
-    selectedProduct = await Product.findById(productId);
+    const [result] = await mysqlPool.query(
+      "SELECT * FROM products WHERE productId = ?",
+      [productId]
+    );
+    selectedProduct = result;
   } catch (err) {
     throw new Error(
       `Cannot find product with id of ${productId} because of ${err.message}`
@@ -243,34 +278,37 @@ const updateProduct = async (req, res, next) => {
       new HttpError(`There is no product with id of ${productId}`, 404)
     );
 
-  selectedProduct.productName = productName;
-  selectedProduct.productPrice = productPrice;
-  selectedProduct.productCategory = productCategory;
+  let newImage = req.file.path || selectedProduct[0].productImage;
+  if (
+    newImage !== selectedProduct[0].productImage &&
+    selectedProduct[0].productImage !== null
+  ) {
+    fs.unlink(selectedProduct[0].productImage, (err) => console.log(err));
+  }
+
+  const updatedProduct = {
+    productName,
+    productPrice,
+    productImage: newImage,
+    productCategoryId,
+  };
 
   try {
-    if (req.file) {
-      const newImage = req.file.path;
-
-      if (newImage !== selectedProduct.productImage) {
-        fs.unlink(selectedProduct.productImage, (err) => console.log(err));
-      }
-
-      selectedProduct.productImage = newImage;
-    }
-
-    await selectedProduct.save();
+    await mysqlPool.query("UPDATE products SET ? WHERE productId = ?", [
+      updatedProduct,
+      productId,
+    ]);
   } catch (err) {
     return next(
       new HttpError(
-        `Faled to update a product with id of ${productId} because of ${err.message}`,
+        `Failed to update a product with id of ${productId} because of ${err.message}`,
         500
       )
     );
   }
-
   res.status(200).json({
     message: "Successfully update a product!",
-    data: selectedProduct.toObject({ getters: true }),
+    data: updatedProduct,
   });
 };
 
@@ -280,9 +318,11 @@ const deleteProduct = async (req, res, next) => {
   // Find product
   let selectedProduct;
   try {
-    selectedProduct = await Product.findById(productId).populate(
-      "productCategory"
+    const [result] = await mysqlPool.query(
+      "SELECT * FROM products WHERE productId = ?",
+      [productId]
     );
+    selectedProduct = result;
   } catch (err) {
     return next(
       new HttpError(
@@ -291,7 +331,6 @@ const deleteProduct = async (req, res, next) => {
       )
     );
   }
-
   if (!selectedProduct)
     return next(
       new HttpError(`Cannot find a product with id of ${productId}`, 404)
@@ -300,9 +339,11 @@ const deleteProduct = async (req, res, next) => {
   // Find category
   let selectedCategory;
   try {
-    selectedCategory = await Category.findById(
-      selectedProduct.productCategory.id
+    const [result] = await mysqlPool.query(
+      "SELECT * FROM categories WHERE productCategoryId = ?",
+      [selectedProduct.productCategory]
     );
+    selectedCategory = result;
   } catch (err) {
     return next(
       new HttpError(`Cannot find a category because of ${err.message}`, 500)
@@ -312,20 +353,18 @@ const deleteProduct = async (req, res, next) => {
   if (!selectedCategory)
     return next(
       new HttpError(
-        `There is no category with id of ${selectedProduct.productCategory.id}`,
+        `There is no category with id of ${selectedProduct.productCategory}`,
         404
       )
     );
 
-  const imagePath = selectedProduct.productImage;
+  const imagePath = `${selectedProduct[0].productImage}`;
 
   try {
-    const sess = await mongoose.startSession();
-    sess.startTransaction();
-    await selectedProduct.deleteOne({ session: sess });
-    selectedProduct.productCategory.products.pull(selectedProduct);
-    await selectedProduct.productCategory.save({ session: sess });
-    await sess.commitTransaction();
+    await mysqlPool.query("DELETE FROM products WHERE productId = ?", [
+      productId,
+    ]);
+    fs.unlink(imagePath, (err) => err && console.log(err));
   } catch (err) {
     return next(
       new HttpError(
@@ -334,8 +373,6 @@ const deleteProduct = async (req, res, next) => {
       )
     );
   }
-
-  fs.unlink(imagePath, (err) => err && console.log(err));
 
   res.status(200).json({
     message: "Successfully deleted a product!",

@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
+const mysql = require("mysql2");
 const express = require("express");
-const mongoose = require("mongoose");
 const bodyParser = require("body-parser"); // Parse any incoming body to extract JSON data
 
 require("dotenv").config();
@@ -44,17 +44,15 @@ app.use((error, req, res, next) => {
   if (res.headerSent) return next(error);
 
   res.status(error.code || 500);
-  res.json({ message: error.message || "An unknown error occured!" });
+  res.json({ message: error.message || "An unknown error occurred!" });
 });
 
-let port = 5000;
+app.listen(() => {
+  console.log("Server is running successfully!");
+});
 
-mongoose
-  .connect(
-    `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster-place.arkm4vk.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
-  )
-  .then(() => {
-    console.log("Successfully connected to database!", port);
-    app.listen(port);
-  })
-  .catch((error) => console.error("Failed to connect to database!", error));
+// const port = 5000;
+// app.listen(port, () => {
+//   console.log("Server is running on port", port);
+//   // console.log(process.env);
+// });
