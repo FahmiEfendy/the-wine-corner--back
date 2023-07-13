@@ -55,7 +55,11 @@ const getAllProducts = async (req, res, next) => {
   if (productSearch) {
     try {
       allProducts = await mysqlPool.query(
-        `SELECT c.id AS __id, c.productPath, c.productType, p.productID, p.productName, p.productPrice, p.productImage FROM categories c LEFT JOIN products p ON c.id = p.productCategory WHERE p.productCategory IS NOT NULL AND p.productName LIKE ?`,
+        `SELECT c.productCategoryId as __id, c.productPath, c.productType, JSON_ARRAYAGG( JSON_OBJECT('productId',p.productId,'productName', p.productName, 'productPrice', p.productPrice, 'productImage', p.productImage)) AS products 
+        FROM categories c 
+        LEFT JOIN products p ON c.productCategoryId = p.productCategoryId 
+        WHERE p.productCategoryId IS NOT NULL AND p.productName LIKE ?
+        GROUP BY c.productCategoryId, c.productPath, c.productType;`,
         [`%${productSearch}%`]
       );
     } catch (err) {
@@ -67,7 +71,7 @@ const getAllProducts = async (req, res, next) => {
     const products = JSON.parse(category.products);
     return {
       ...category,
-      products: products.map((product) => JSON.parse(product)),
+      products: products.map((product) => product),
     };
   });
 
